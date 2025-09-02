@@ -1,22 +1,36 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveStorageDb } from '@/lib/firebase-admin';
+import { getManagementDb, getStorageDb } from '@/lib/firebase-admin';
 
 const KEYS_COLLECTION = '_proxy_api_keys';
 
+interface ApiKeyData {
+  key: string;
+  projectId: string; // The ID of the Firebase project this key has access to
+}
 
-async function validateApiKey(apiKey: string): Promise<boolean> {
+async function validateApiKey(apiKey: string): Promise<ApiKeyData | null> {
   if (!apiKey) {
-    return false;
+    return null;
   }
   try {
-    const db = getActiveStorageDb(); 
+    const db = getManagementDb(); 
     const keysQuery = await db.collection(KEYS_COLLECTION).where('key', '==', apiKey).limit(1).get();
 
-    return !keysQuery.empty;
+    if (keysQuery.empty) {
+      return null;
+    }
+    const keyDoc = keysQuery.docs[0];
+    const keyData = keyDoc.data();
+
+    return {
+      key: keyData.key,
+      projectId: keyData.projectId,
+    };
+
   } catch (error) {
     console.error("Error validating API key:", error);
-    return false;
+    return null;
   }
 }
 
@@ -28,8 +42,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized: Missing API Key.' }, { status: 401 });
   }
 
-  const isValid = await validateApiKey(providedApiKey);
-  if (!isValid) {
+  const validKeyData = await validateApiKey(providedApiKey);
+  if (!validKeyData) {
       return NextResponse.json({ error: 'Unauthorized: Invalid API Key.' }, { status: 401 });
   }
 
@@ -47,9 +61,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields: operation, path' }, { status: 400 });
   }
 
-  // 3. Perform the database operation
+  // 3. Perform the database operation on the correct project
   try {
-    const db = getActiveStorageDb();
+    // Get the specific storage database linked to the API key
+    const db = await getStorageDb(validKeyData.projectId);
     const pathString = path.join('/');
     
     let result: any;
@@ -58,6 +73,10 @@ export async function POST(req: NextRequest) {
       case 'getDoc':
         const doc = await db.doc(pathString).get();
         result = doc.exists ? { id: doc.id, ...doc.data() } : null;
+        break;
+      case 'getCollection':
+         const snapshot = await db.collection(pathString).get();
+         result = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         break;
       case 'addDoc':
         const collectionRef = db.collection(pathString);
@@ -83,7 +102,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result, { status: 200 });
 
   } catch (error: any) {
-    console.error(`Firestore operation failed: ${error.message}`);
-    return NextResponse.json({ error: 'An internal server error occurred.' }, { status: 500 });
+    console.error(`Firestore operation failed for project ${validKeyData.projectId}: ${error.message}`);
+    return NextResponse.json({ error: 'An internal server error occurred.', details: error.message }, { status: 500 });
   }
 }

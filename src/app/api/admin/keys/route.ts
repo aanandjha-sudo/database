@@ -1,27 +1,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveStorageDb } from '@/lib/firebase-admin';
-
-// This endpoint is for managing API keys.
-// It uses the ADMIN_SECRET_KEY for authorization.
+import { getManagementDb } from '@/lib/firebase-admin';
 
 const KEYS_COLLECTION = '_proxy_api_keys';
 
-// Helper function to get the database.
-function getManagementDb() {
-    try {
-        return getActiveStorageDb();
-    } catch (e: any) {
-        console.error("Management DB Error: ", e.message);
-        throw new Error('No storage project configured. Please check your setup in src/lib/firebase-admin.ts.');
+function validateAdminSecret(req: NextRequest) {
+    const adminSecret = req.headers.get('X-Admin-Secret');
+    if (!process.env.ADMIN_SECRET_KEY || adminSecret !== process.env.ADMIN_SECRET_KEY) {
+        return false;
     }
+    return true;
 }
 
-
 export async function GET(req: NextRequest) {
-    const adminSecret = req.headers.get('X-Admin-Secret');
-
-    if (!process.env.ADMIN_SECRET_KEY || adminSecret !== process.env.ADMIN_SECRET_KEY) {
+    if (!validateAdminSecret(req)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -37,16 +29,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-    const adminSecret = req.headers.get('X-Admin-Secret');
-
-    if (!process.env.ADMIN_SECRET_KEY || adminSecret !== process.env.ADMIN_SECRET_KEY) {
+    if (!validateAdminSecret(req)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     try {
-        const { name } = await req.json();
-        if (!name) {
-            return NextResponse.json({ error: 'Missing required field: name' }, { status: 400 });
+        const { name, projectId } = await req.json();
+        if (!name || !projectId) {
+            return NextResponse.json({ error: 'Missing required fields: name, projectId' }, { status: 400 });
         }
 
         const db = getManagementDb();
@@ -54,6 +44,7 @@ export async function POST(req: NextRequest) {
         
         const newKeyData = {
             name,
+            projectId,
             key: apiKey,
             createdAt: new Date().toISOString()
         };
@@ -69,9 +60,7 @@ export async function POST(req: NextRequest) {
 
 
 export async function DELETE(req: NextRequest) {
-     const adminSecret = req.headers.get('X-Admin-Secret');
-
-    if (!process.env.ADMIN_SECRET_KEY || adminSecret !== process.env.ADMIN_SECRET_KEY) {
+    if (!validateAdminSecret(req)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
