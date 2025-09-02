@@ -3,17 +3,19 @@ import { getManagementProjectId } from '@/lib/firebase-admin';
 import { ProxyDashboard } from '@/components/proxy-dashboard';
 import { DatabaseZap } from 'lucide-react';
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
   let initialManagementProjectId: string | null = null;
   let error: string | null = null;
 
   try {
     // This function can only be called on the server.
-    initialManagementProjectId = getManagementProjectId();
+    initialManagementProjectId = await getManagementProjectId();
     if (!initialManagementProjectId) {
-      error = "No management project loaded. The proxy service will not function. Please check your .env.local file and restart.";
+      // This case should ideally not be hit if getManagementProjectId throws, but as a fallback.
+      error = "No management project loaded. The proxy service will not function. Please check your FIREBASE_MANAGEMENT_CREDENTIALS environment variable and restart.";
     }
   } catch (e: any) {
+    // Catch the specific error from firebase-admin and provide a user-friendly message.
     error = e.message || 'An unexpected error occurred while loading project configuration.';
   }
 
