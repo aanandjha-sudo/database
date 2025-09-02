@@ -147,7 +147,8 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
       if (!response.ok) throw new Error('Failed to delete key.');
       toast({ title: 'API Key Deleted' });
       setApiKeys(prev => prev.filter(key => key.id !== keyId));
-    } catch (e: any)      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally {
       setIsLoading(false);
     }
