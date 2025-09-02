@@ -41,12 +41,29 @@ interface ApiKey {
   createdAt: string;
 }
 
-const clientAppSetupCode = `
+export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboardProps) {
+  const [activeProjectId, setActiveProjectId] = useState(initialActiveProjectId);
+  const [adminSecret, setAdminSecret] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [isKeyLoading, setIsKeyLoading] = useState(false);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [proxyUrl, setProxyUrl] = useState('');
+
+  useEffect(() => {
+    // This code runs only in the browser after the component mounts
+    if (typeof window !== 'undefined') {
+      setProxyUrl(`${window.location.origin}/api/proxy`);
+    }
+  }, []);
+  
+  const clientAppSetupCode = `
 // In your client app (game, website, etc.)
 
 // The URL of your deployed proxy service.
-// This will be the URL where you host this gatekeeper app.
-const PROXY_URL = 'YOUR_DEPLOYED_APP_URL/api/proxy';
+const PROXY_URL = '${proxyUrl || 'YOUR_DEPLOYED_APP_URL/api/proxy'}';
 
 // The unique API key you generated from this dashboard.
 const API_KEY = 'proxy_...'; // <-- PASTE YOUR GENERATED KEY HERE
@@ -69,17 +86,6 @@ async function getMyData() {
   return data;
 }
 `.trim();
-
-
-export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboardProps) {
-  const [activeProjectId, setActiveProjectId] = useState(initialActiveProjectId);
-  const [adminSecret, setAdminSecret] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
-  const [isKeyLoading, setIsKeyLoading] = useState(false);
-  const [newKeyName, setNewKeyName] = useState('');
 
   const fetchApiKeys = async () => {
     if (!adminSecret) {
@@ -144,7 +150,9 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
         method: 'DELETE',
         headers: { 'X-Admin-Secret': adminSecret },
       });
-      if (!response.ok) throw new Error('Failed to delete key.');
+      if (!response.ok) {
+        throw new Error('Failed to delete key.');
+      }
       toast({ title: 'API Key Deleted' });
       setApiKeys((prev) => prev.filter((key) => key.id !== keyId));
     } catch (e: any) {
@@ -340,7 +348,7 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
           <div>
               <h3 className="font-semibold mb-2">Step 2: Use the Key in Your Client App</h3>
               <p className="text-sm text-muted-foreground mb-4">
-               In your client application's code, use the snippet below. Replace `YOUR_DEPLOYED_APP_URL` with the public URL of this gatekeeper app, and replace `proxy_...` with the key you generated.
+               In your client application's code, use the snippet below. It already contains the correct URL for this gatekeeper app. You just need to replace `proxy_...` with the key you generated.
               </p>
               <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
                 <TooltipProvider>
