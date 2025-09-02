@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, CheckCircle, Info, Loader2, KeyRound, Copy, Database, Code, Trash2, PlusCircle, Server } from "lucide-react";
+import { AlertTriangle, CheckCircle, Info, Loader2, KeyRound, Copy, Database, Code, Trash2, PlusCircle, Server, FileCode } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -83,8 +83,9 @@ async function getMyData() {
   
   const data = await response.json();
   console.log(data);
-  return data;
 }
+
+getMyData();
 `.trim();
 
   const fetchApiKeys = async () => {
@@ -203,7 +204,7 @@ async function getMyData() {
               <Server className="h-4 w-4" />
               <AlertTitle>Manual Setup Required for Deployment</AlertTitle>
               <AlertDescription>
-                For this service to function correctly on Netlify/Vercel, you must set the `FIREBASE_ADMIN_CREDENTIALS` environment variable. The service is currently {isServiceActive ? `connected to project: **${activeProjectId}**` : "inactive because credentials are not configured."}
+                For this service to function correctly, you must set the `FIREBASE_ADMIN_CREDENTIALS` environment variable in your hosting provider (e.g., Netlify, Vercel). The service is currently {isServiceActive ? `connected to project: **${activeProjectId}**` : "inactive because the credentials are not configured in your environment."}
               </AlertDescription>
           </Alert>
         </CardContent>
@@ -212,8 +213,60 @@ async function getMyData() {
       <Card>
         <CardHeader>
           <CardTitle className="font-headline flex items-center gap-3">
+            <Code className="h-5 w-5 text-primary" />
+            How to Use: Setup Instructions
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+           <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
+            <AccordionItem value="item-1">
+              <AccordionTrigger>Step 1: Get Your Firebase Service Account Credentials</AccordionTrigger>
+              <AccordionContent>
+                <ol className="list-decimal list-inside space-y-2 text-sm">
+                  <li>Go to your <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="underline text-primary">Firebase Project Console</a>.</li>
+                  <li>Click the gear icon next to "Project Overview" and select <strong>Project settings</strong>.</li>
+                  <li>Go to the <strong>Service accounts</strong> tab.</li>
+                  <li>Click the <strong>"Generate new private key"</strong> button. A JSON file will download.</li>
+                  <li>Open the file, and copy the entire content. You will need this for the next step.</li>
+                </ol>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger>Step 2: Set Environment Variables in Netlify/Vercel</AccordionTrigger>
+              <AccordionContent>
+                 <ol className="list-decimal list-inside space-y-2 text-sm">
+                    <li>In your hosting provider's dashboard, go to the environment variables settings for this project.</li>
+                    <li>Click **"Add variable"** or "Edit" and add the following:</li>
+                    <li className="ml-4 my-2">
+                        <strong>Key:</strong> `FIREBASE_ADMIN_CREDENTIALS` <br/>
+                        <strong>Value:</strong> Paste the entire content of the JSON file you downloaded.
+                    </li>
+                     <li className="ml-4 my-2">
+                        <strong>Key:</strong> `ADMIN_SECRET_KEY` <br/>
+                        <strong>Value:</strong> Your chosen secret for the admin panel (e.g., `AKJ@@8051964008//@LEADERS`).
+                    </li>
+                    <li>Add your login variables (`NEXT_PUBLIC_DEFAULT_USER_NAME` and `NEXT_PUBLIC_DEFAULT_USER_PASSWORD`) as well.</li>
+                    <li>Save and **re-deploy** your application for the new variables to take effect. The "Service Status" above should turn green.</li>
+                </ol>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger>Step 3: Generate an API Key for your Client App</AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm text-muted-foreground">
+                Once the service is active, use the "API Key Generator" below to create a unique API key for each of your client applications. This key proves the request is from an authorized app.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline flex items-center gap-3">
             <KeyRound className="h-5 w-5 text-primary" />
-            Admin Panel & API Key Generator
+            API Key Generator
           </CardTitle>
            <CardDescription>
             Enter your Admin Secret Key to generate and manage unique API keys for your client apps. This will only work if the service is active.
@@ -234,7 +287,7 @@ async function getMyData() {
                 <form onSubmit={handleCreateKey} className="flex flex-col sm:flex-row gap-2">
                     <Input
                     type="text"
-                    placeholder="Name for new key (e.g. My Game App)"
+                    placeholder="Name for new key (e.g. My Awesome Game)"
                     value={newKeyName}
                     onChange={(e) => setNewKeyName(e.target.value)}
                     disabled={!adminSecret || !isServiceActive}
@@ -275,7 +328,7 @@ async function getMyData() {
                       {adminSecret && !isServiceActive && !isKeyLoading && (
                         <TableRow>
                           <TableCell colSpan={3} className="text-center text-destructive">
-                            Service is inactive. Please configure `FIREBASE_ADMIN_CREDENTIALS` in your deployment environment.
+                            Service is inactive. Please complete the setup instructions above and re-deploy.
                           </TableCell>
                         </TableRow>
                       )}
@@ -329,72 +382,36 @@ async function getMyData() {
               </div>
             </CardContent>
         </Card>
-      
+
       <Card>
         <CardHeader>
           <CardTitle className="font-headline flex items-center gap-3">
-            <Code className="h-5 w-5 text-primary" />
-            How to Use: Connect Your Client App
+            <FileCode className="h-5 w-5 text-primary" />
+            Client App Example: How to Fetch Data
           </CardTitle>
+          <CardDescription>
+            Use this code in your client app (your game, website, etc.) to securely read and write data.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="item-1">
-              <AccordionTrigger>Step 1: Get Your Firebase Service Account Credentials</AccordionTrigger>
-              <AccordionContent>
-                <ol className="list-decimal list-inside space-y-2 text-sm">
-                  <li>Go to your <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="underline text-primary">Firebase Project Console</a>.</li>
-                  <li>Click the gear icon next to "Project Overview" and select <strong>Project settings</strong>.</li>
-                  <li>Go to the <strong>Service accounts</strong> tab.</li>
-                  <li>Click the <strong>"Generate new private key"</strong> button. A JSON file will download.</li>
-                  <li>Open the file, and copy the entire content. You will need this for the next step.</li>
-                </ol>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="item-2">
-              <AccordionTrigger>Step 2: Set Environment Variables in Netlify</AccordionTrigger>
-              <AccordionContent>
-                 <ol className="list-decimal list-inside space-y-2 text-sm">
-                    <li>In your Netlify site dashboard, go to <strong>Site configuration &gt; Build & deploy &gt; Environment</strong>.</li>
-                    <li>Click **"Edit variables"** and add the following:</li>
-                    <li className="ml-4 my-2">
-                        <strong>Key:</strong> `FIREBASE_ADMIN_CREDENTIALS` <br/>
-                        <strong>Value:</strong> Paste the entire content of the JSON file you downloaded.
-                    </li>
-                     <li className="ml-4 my-2">
-                        <strong>Key:</strong> `ADMIN_SECRET_KEY` <br/>
-                        <strong>Value:</strong> Your chosen secret for the admin panel (e.g., `AKJ@@8051964008//@LEADERS`).
-                    </li>
-                    <li>Add the other variables (`NEXT_PUBLIC_DEFAULT_USER_NAME` and `NEXT_PUBLIC_DEFAULT_USER_PASSWORD`) as well.</li>
-                    <li>Save and **re-deploy** your application for the new variables to take effect.</li>
-                </ol>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="item-3">
-              <AccordionTrigger>Step 3: Generate an API Key and Use in Your App</AccordionTrigger>
-              <AccordionContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                Once the service is active, use the "Admin Panel" above to create a unique API key. Then, use the snippet below in your client app.
-                </p>
-                <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-7 w-7" onClick={() => copyToClipboard(clientAppSetupCode)}>
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent><p>Copy code</p></TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <pre className="overflow-x-auto whitespace-pre-wrap">{clientAppSetupCode}</pre>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+        <CardContent>
+           <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-7 w-7" onClick={() => copyToClipboard(clientAppSetupCode)}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Copy code</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <pre className="overflow-x-auto whitespace-pre-wrap">{clientAppSetupCode}</pre>
+            </div>
         </CardContent>
       </Card>
       
     </div>
   );
 }
+
+    
