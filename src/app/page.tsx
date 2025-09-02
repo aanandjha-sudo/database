@@ -57,7 +57,7 @@ export default function LoginPage() {
               <Input
                 id="username"
                 type="text"
-                placeholder="AJ_LEADER"
+                placeholder="Enter your username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -88,3 +88,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
