@@ -142,11 +142,11 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
     try {
       const response = await fetch(`/api/admin/keys?id=${keyId}`, {
         method: 'DELETE',
-        headers: { 'X-Admin-Secret': adminSecret }
+        headers: { 'X-Admin-Secret': adminSecret },
       });
       if (!response.ok) throw new Error('Failed to delete key.');
       toast({ title: 'API Key Deleted' });
-      setApiKeys(prev => prev.filter(key => key.id !== keyId));
+      setApiKeys((prev) => prev.filter((key) => key.id !== keyId));
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally {
@@ -362,5 +362,3 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
     </div>
   );
 }
-
-    
