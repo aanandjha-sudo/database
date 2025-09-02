@@ -8,15 +8,12 @@ import { getActiveStorageDb } from '@/lib/firebase-admin';
 const KEYS_COLLECTION = '_proxy_api_keys';
 
 // Helper function to get the database.
-// We assume the first configured project is the 'management' DB.
 function getManagementDb() {
     try {
-        // This relies on the implementation detail that getActiveStorageDb
-        // without any switching will return the first project's DB.
-        // A more robust solution might involve a dedicated management project config.
         return getActiveStorageDb();
-    } catch (e) {
-        throw new Error('No storage project configured to serve as management database.');
+    } catch (e: any) {
+        console.error("Management DB Error: ", e.message);
+        throw new Error('No storage project configured. Please check your setup in src/lib/firebase-admin.ts.');
     }
 }
 

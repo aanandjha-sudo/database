@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -42,45 +41,47 @@ interface ApiKey {
   createdAt: string;
 }
 
-const envSetupCode = `
-# .env.local
+const serverSetupCode = `
+// FILE: src/lib/firebase-admin.ts
 
-# Password for the Admin Panel on this dashboard to switch projects.
-ADMIN_SECRET_KEY="your-super-secret-key"
+import admin from 'firebase-admin';
 
-# --- Storage Projects ---
-# The FIRST project is used for storing API keys.
-# All other projects are available for you to switch between.
+const serviceAccount = {
+  // PASTE YOUR FIREBASE SERVICE ACCOUNT JSON HERE
+  "type": "service_account",
+  "project_id": "your-project-id",
+  "private_key_id": "...",
+  "private_key": "...",
+  "client_email": "...",
+  "client_id": "...",
+  "auth_uri": "...",
+  "token_uri": "...",
+  "auth_provider_x509_cert_url": "...",
+  "client_x509_cert_url": "..."
+};
 
-# Project 1 (Management & e.g., User Data)
-STORAGE_PROJECT_1_ID="your-first-db-project-id"
-STORAGE_PROJECT_1_CREDS_BASE64="ey..."
-
-# Project 2 (e.g., for Game Data)
-# STORAGE_PROJECT_2_ID="your-second-db-project-id"
-# STORAGE_PROJECT_2_CREDS_BASE64="ey..."
+// No need to edit anything below this line...
 `.trim();
 
 const clientAppSetupCode = `
-// No special SDKs are needed on the client, just standard 'fetch'.
-// Below is an example of how to make a request.
+// In your client app (game, website, etc.)
 
 // The URL of your deployed proxy service.
-const PROXY_URL = 'https://your-proxy-service-url.com/api/proxy';
+const PROXY_URL = 'https://your-proxy-app-url.com/api/proxy';
 
-// A unique API key you generated from the dashboard.
-const API_KEY = 'proxy_...'; // <-- This key authenticates your app
+// The unique API key you generated from this dashboard.
+const API_KEY = 'proxy_...'; // <-- PASTE YOUR GENERATED KEY HERE
 
-async function getUserProfile(userId) {
+async function getMyData() {
   const response = await fetch(PROXY_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-API-Key': API_KEY
+      'X-API-Key': API_KEY // Authenticates your app
     },
     body: JSON.stringify({
       operation: 'getDoc',
-      path: ['users', userId]
+      path: ['users', 'user123'] // Example: get a document
     })
   });
   
@@ -90,126 +91,6 @@ async function getUserProfile(userId) {
 }
 `.trim();
 
-const apiExamples = {
-  getDoc: `fetch('/api/proxy', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'YOUR_GENERATED_API_KEY'
-  },
-  body: JSON.stringify({
-    operation: 'getDoc',
-    path: ['users', 'someUserId']
-  })
-});`,
-  addDoc: `fetch('/api/proxy', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'YOUR_GENERATED_API_KEY'
-  },
-  body: JSON.stringify({
-    operation: 'addDoc',
-    path: ['posts'], // Path to a collection
-    payload: { 
-      title: 'New Post', 
-      content: 'Hello World!' 
-    }
-  })
-});`,
-  setDoc: `fetch('/api/proxy', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'YOUR_GENERATED_API_KEY'
-  },
-  body: JSON.stringify({
-    operation: 'setDoc',
-    path: ['users', 'someUserId'], // Path to a document
-    payload: { 
-      name: 'John Doe', 
-      email: 'john.doe@example.com' 
-    }
-  })
-});`,
-  updateDoc: `fetch('/api/proxy', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'YOUR_GENERATED_API_KEY'
-  },
-  body: JSON.stringify({
-    operation: 'updateDoc',
-    path: ['users', 'someUserId'], // Path to a document
-    payload: { 
-      lastLogin: new Date().toISOString()
-    }
-  })
-});`,
-  deleteDoc: `fetch('/api/proxy', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'YOUR_GENERATED_API_KEY'
-  },
-  body: JSON.stringify({
-    operation: 'deleteDoc',
-    path: ['users', 'someUserId'] // Path to a document
-  })
-});`
-};
-
-const featureExamples = {
-  chat: `// Send a new message in a chat room
-fetch('/api/proxy', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'YOUR_GENERATED_API_KEY'
-  },
-  body: JSON.stringify({
-    operation: 'addDoc',
-    path: ['chatRooms', 'room123', 'messages'],
-    payload: { 
-      text: 'Hey everyone!',
-      senderId: 'userABC',
-      timestamp: new Date().toISOString()
-    }
-  })
-});`,
-  game: `// Update a player's score in a game session
-fetch('/api/proxy', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'YOUR_GENERATED_API_KEY'
-  },
-  body: JSON.stringify({
-    operation: 'updateDoc',
-    path: ['gameSessions', 'sessionXYZ', 'players', 'player1'],
-    payload: {
-      score: 1500
-    }
-  })
-});`,
-  feed: `// Add a new post to the global feed
-fetch('/api/proxy', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'YOUR_GENERATED_API_KEY'
-  },
-  body: JSON.stringify({
-    operation: 'addDoc',
-    path: ['feed'],
-    payload: { 
-      authorId: 'userABC',
-      content: 'Just discovered this amazing proxy service!',
-      likes: 0
-    }
-  })
-});`
-};
 
 export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboardProps) {
   const [activeProjectId, setActiveProjectId] = useState(initialActiveProjectId);
@@ -218,17 +99,23 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
   const { toast } = useToast();
 
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
-  const [isKeyLoading, setIsKeyLoading] = useState(true);
+  const [isKeyLoading, setIsKeyLoading] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
 
   const fetchApiKeys = async () => {
-    if (!adminSecret) return;
+    if (!adminSecret) {
+        setIsKeyLoading(false);
+        return;
+    }
     setIsKeyLoading(true);
     try {
       const response = await fetch('/api/admin/keys', {
         headers: { 'X-Admin-Secret': adminSecret }
       });
-      if (!response.ok) throw new Error('Failed to fetch keys. Is the Admin Secret correct?');
+      if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error || 'Failed to fetch keys. Is the Admin Secret correct?');
+      }
       const data = await response.json();
       setApiKeys(data);
     } catch (e: any) {
@@ -238,6 +125,12 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
       setIsKeyLoading(false);
     }
   };
+  
+  // Fetch keys when admin secret changes
+  useEffect(() => {
+    fetchApiKeys();
+  }, [adminSecret]);
+
 
   const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,7 +138,7 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
       toast({ variant: 'destructive', title: 'Missing Information', description: 'Please provide an Admin Secret and a name for the key.' });
       return;
     }
-    setIsKeyLoading(true);
+    setIsLoading(true);
     try {
       const response = await fetch('/api/admin/keys', {
         method: 'POST',
@@ -260,12 +153,13 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
     } catch (e: any) {
        toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally {
-      setIsKeyLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleDeleteKey = async (keyId: string) => {
     if (!adminSecret) return;
+    setIsLoading(true);
     try {
       const response = await fetch(`/api/admin/keys?id=${keyId}`, {
         method: 'DELETE',
@@ -276,38 +170,6 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
       setApiKeys(prev => prev.filter(key => key.id !== keyId));
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Error', description: e.message });
-    }
-  };
-
-
-  const handleSwitchProject = async () => {
-    if (!adminSecret) {
-      toast({
-        variant: 'destructive',
-        title: 'Missing Secret',
-        description: 'Please enter the admin secret key.',
-      });
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/admin/switch-project', {
-        method: 'POST',
-        headers: { 'X-Admin-Secret': adminSecret },
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to switch project');
-      setActiveProjectId(data.activeProjectId);
-      toast({
-        title: 'Project Switched',
-        description: `Active project is now: ${data.activeProjectId}`,
-      });
-    } catch (e: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error Switching Project',
-        description: e.message,
-      });
     } finally {
       setIsLoading(false);
     }
@@ -350,75 +212,52 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 text-sm">
-            <Info className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Active Storage Project ID:</span>
+            <Database className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Active Database Project ID:</span>
             {isServiceActive ? (
               <span className="font-mono font-bold text-accent">{activeProjectId}</span>
             ) : (
-              <span className="font-mono font-bold text-destructive-foreground bg-destructive px-2 py-1 rounded-md">Not Available</span>
+              <span className="font-mono font-bold text-destructive-foreground bg-destructive px-2 py-1 rounded-md">Not Configured</span>
             )}
           </div>
         </CardContent>
       </Card>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <Card>
-          <Accordion type="single" collapsible defaultValue='item-1' className="w-full">
-            <AccordionItem value="item-1">
-              <AccordionTrigger className="px-6 py-4 text-lg font-headline">
-                <div className="flex items-center gap-3">
-                  <KeyRound className="h-5 w-5 text-primary" />
-                  Admin Panel
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-6 pt-0">
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Enter the `ADMIN_SECRET_KEY` from your `.env` file to manage projects and API keys.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline flex items-center gap-3">
+            <KeyRound className="h-5 w-5 text-primary" />
+            Admin Panel & API Key Generator
+          </CardTitle>
+           <CardDescription>
+            Enter your Admin Secret Key to generate and manage API keys for your client apps.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-2">
                     <Input
                       type="password"
-                      placeholder="Enter Admin Secret Key"
+                      placeholder="Enter Admin Secret Key to manage keys"
                       value={adminSecret}
                       onChange={(e) => setAdminSecret(e.target.value)}
                       className="flex-grow"
                     />
-                    <Button onClick={handleSwitchProject} disabled={isLoading || !isServiceActive}>
-                      {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Switch Project
-                    </Button>
-                  </div>
-                   {!isServiceActive && <p className="text-xs text-destructive">Admin actions are disabled because the service is inactive.</p>}
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </Card>
-        
-        <Card>
-            <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-3">
-                <KeyRound className="h-5 w-5 text-primary" />
-                Client API Keys
-              </CardTitle>
-              <CardDescription>
-                Generate and manage unique API keys for your client applications. Requires Admin Secret.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-               <form onSubmit={handleCreateKey} className="flex flex-col sm:flex-row gap-2 mb-4">
-                <Input
-                  type="text"
-                  placeholder="Name for new key (e.g. My Game App)"
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                  disabled={!adminSecret || !isServiceActive}
-                />
-                <Button type="submit" disabled={!adminSecret || !isServiceActive || isKeyLoading || !newKeyName}>
-                  <PlusCircle className="mr-2" /> Generate
-                </Button>
-              </form>
+
+                <form onSubmit={handleCreateKey} className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                    type="text"
+                    placeholder="Name for new key (e.g. My Game App)"
+                    value={newKeyName}
+                    onChange={(e) => setNewKeyName(e.target.value)}
+                    disabled={!adminSecret || !isServiceActive}
+                    />
+                    <Button type="submit" disabled={!adminSecret || !isServiceActive || isLoading || !newKeyName}>
+                        {isLoading ? <Loader2 className="mr-2 animate-spin"/> : <PlusCircle className="mr-2" />}
+                        Generate Key
+                    </Button>
+                </form>
 
               <div className="mt-4 border rounded-md">
                  <Table>
@@ -435,22 +274,29 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
                           <TableCell colSpan={3} className="text-center">
                             <div className="flex justify-center items-center gap-2">
                                 <Loader2 className="h-4 w-4 animate-spin" /> 
-                                <span>Loading keys... Enter Admin Secret to see keys.</span>
+                                <span>Loading...</span>
                             </div>
                           </TableCell>
                         </TableRow>
                       )}
-                      {!isKeyLoading && apiKeys.length === 0 && (
+                      {!adminSecret && !isKeyLoading && (
                         <TableRow>
-                            <TableCell colSpan={3} className="text-center text-muted-foreground">No API keys found.</TableCell>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            Enter Admin Secret to view and manage keys.
+                          </TableCell>
                         </TableRow>
                       )}
-                      {apiKeys.map(key => (
+                      {adminSecret && !isKeyLoading && apiKeys.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={3} className="text-center text-muted-foreground">No API keys found. Generate one above.</TableCell>
+                        </TableRow>
+                      )}
+                      {adminSecret && apiKeys.map(key => (
                         <TableRow key={key.id}>
                           <TableCell className="font-medium">{key.name}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2 font-mono text-sm">
-                                <span>{key.key.substring(0, 12)}...</span>
+                                <span>{key.key}</span>
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(key.key)}>
                                     <Copy className="h-4 w-4" />
                                 </Button>
@@ -487,41 +333,41 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
                     </TableBody>
                  </Table>
               </div>
+              </div>
             </CardContent>
         </Card>
-      </div>
-
+      
       <Card>
         <CardHeader>
           <CardTitle className="font-headline flex items-center gap-3">
             <Database className="h-5 w-5 text-primary" />
-            How to Use: Step-by-Step Guide
+            How to Use: A Simple Guide
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
            <div>
-              <h3 className="font-semibold mb-2">Step 1: Configure Your Proxy Server</h3>
+              <h3 className="font-semibold mb-2">Step 1: Connect This App to Your Firebase Database</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Add your Firebase project credentials and secret keys to the `.env.local` file of this proxy service. You can get the Service Account JSON from your Firebase project settings, then Base64-encode it. The first project is used for managing API keys.
+                Get your Firebase Service Account file from your Firebase project settings. Then, open the file `src/lib/firebase-admin.ts` in this project and paste the entire content of the file into the `serviceAccount` variable.
               </p>
               <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-7 w-7" onClick={() => copyToClipboard(envSetupCode)}>
+                      <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-7 w-7" onClick={() => copyToClipboard(serverSetupCode)}>
                         <Copy className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent><p>Copy code</p></TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <pre className="overflow-x-auto whitespace-pre-wrap">{envSetupCode}</pre>
+                <pre className="overflow-x-auto whitespace-pre-wrap">{serverSetupCode}</pre>
               </div>
           </div>
           <div>
-              <h3 className="font-semibold mb-2">Step 2: Configure Your Client Application</h3>
+              <h3 className="font-semibold mb-2">Step 2: Connect Your Client App to the Database</h3>
               <p className="text-sm text-muted-foreground mb-4">
-               In your client application (e.g., your Next.js frontend, mobile app), you will make `fetch` requests to this proxy service. You must include your `API_ACCESS_KEY` in the `X-API-Key` header to authenticate.
+               In your client application (your game, website, etc.), use the code below to make requests. Generate an API key from the Admin Panel above and paste it into the `API_KEY` variable.
               </p>
               <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
                 <TooltipProvider>
@@ -540,94 +386,6 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
         </CardContent>
       </Card>
       
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline flex items-center gap-3">
-            <Code className="h-5 w-5 text-primary" />
-            API Usage Examples
-          </CardTitle>
-          <CardDescription>
-            Example requests for interacting with the `/api/proxy` endpoint. The proxy will route the request to the currently active database: <span className="font-bold text-accent">{activeProjectId || 'N/A'}</span>.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="general">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="general">General Operations</TabsTrigger>
-                <TabsTrigger value="features">Feature-Specific</TabsTrigger>
-            </TabsList>
-            <TabsContent value="general">
-                <Tabs defaultValue="getDoc">
-                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 mt-4">
-                    <TabsTrigger value="getDoc">getDoc</TabsTrigger>
-                    <TabsTrigger value="addDoc">addDoc</TabsTrigger>
-                    <TabsTrigger value="setDoc">setDoc</TabsTrigger>
-                    <TabsTrigger value="updateDoc">updateDoc</TabsTrigger>
-                    <TabsTrigger value="deleteDoc">deleteDoc</TabsTrigger>
-                    </TabsList>
-                    {Object.entries(apiExamples).map(([key, code]) => (
-                    <TabsContent key={key} value={key}>
-                        <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
-                        <TooltipProvider>
-                            <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                variant="ghost"
-                                size="icon"
-                                className="absolute right-2 top-2 h-7 w-7"
-                                onClick={() => copyToClipboard(code)}
-                                >
-                                <Copy className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Copy code</p>
-                            </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        <pre className="overflow-x-auto whitespace-pre-wrap">{code}</pre>
-                        </div>
-                    </TabsContent>
-                    ))}
-                </Tabs>
-            </TabsContent>
-            <TabsContent value="features">
-                <p className="text-sm text-muted-foreground mt-4 mb-2">Here is how you might structure API calls for different application features. You can direct these features to different databases using the 'Switch Project' button in the Admin Panel.</p>
-                <Tabs defaultValue="chat">
-                    <TabsList className="grid w-full grid-cols-3 mt-4">
-                        <TabsTrigger value="chat">Chat</TabsTrigger>
-                        <TabsTrigger value="game">Game State</TabsTrigger>
-                        <TabsTrigger value="feed">Social Feed</TabsTrigger>
-                    </TabsList>
-                    {Object.entries(featureExamples).map(([key, code]) => (
-                    <TabsContent key={key} value={key}>
-                        <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
-                        <TooltipProvider>
-                            <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                variant="ghost"
-                                size="icon"
-                                className="absolute right-2 top-2 h-7 w-7"
-                                onClick={() => copyToClipboard(code)}
-                                >
-                                <Copy className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Copy code</p>
-                            </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        <pre className="overflow-x-auto whitespace-pre-wrap">{code}</pre>
-                        </div>
-                    </TabsContent>
-                    ))}
-                </Tabs>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
     </div>
   );
 }
