@@ -49,7 +49,7 @@ initializeManagementApp();
 /**
  * Gets the Firestore instance for the management database.
  */
-export function getManagementDb() {
+export async function getManagementDb() {
   if (!managementApp) {
     throw new Error('Management App is not initialized.');
   }
@@ -66,7 +66,7 @@ export async function getStorageDb(projectId: string): Promise<admin.firestore.F
   }
 
   try {
-    const db = getManagementDb();
+    const db = await getManagementDb();
     const doc = await db.collection(MANAGEMENT_PROJECT_COLLECTION).doc(projectId).get();
     
     if (!doc.exists) {
@@ -104,7 +104,7 @@ export async function getStorageDb(projectId: string): Promise<admin.firestore.F
 /**
  * Returns the ID of the management project.
  */
-export function getManagementProjectId(): string | null {
+export async function getManagementProjectId(): Promise<string | null> {
     if (!managementApp) return null;
     return managementApp.options.projectId || null;
 }
