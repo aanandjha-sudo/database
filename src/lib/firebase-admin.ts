@@ -1,33 +1,42 @@
 
 import admin from 'firebase-admin';
-import { firebaseConfig } from '@/lib/firebase';
 
-// --- Simplified Configuration ---
-// The application is now configured to use the Firebase project defined
-// in src/lib/firebase.ts. This project will be used for storing API keys
-// and as the default database for your client apps.
+// --- Manual Configuration ---
+// This version requires you to provide your Firebase project's service account
+// credentials as an environment variable. This is a more robust method for deployed
+// environments like Vercel or Netlify.
 
-// No manual setup is required here anymore.
+// How to get your service account key:
+// 1. Go to your Firebase project console: https://console.firebase.google.com/
+// 2. Click the gear icon > Project settings > Service accounts.
+// 3. Click "Generate new private key". A JSON file will be downloaded.
+// 4. Open the JSON file, copy its entire contents.
+// 5. In your deployment environment (Vercel, Netlify), create an environment
+//    variable named `FIREBASE_ADMIN_CREDENTIALS` and paste the JSON content as its value.
 
 // -----------------------------------------------------
 // No need to edit anything below this line.
 // -----------------------------------------------------
 
-const projectId = firebaseConfig.projectId;
+let app: admin.app.App;
 
-// Initialize the primary app for database operations.
 if (!admin.apps.length) {
-  try {
-    if (projectId) {
-        admin.initializeApp({
-            projectId: projectId,
-        });
-    } else {
-        console.warn("Firebase project ID is not set in src/lib/firebase.ts. The proxy service will not function.");
+    try {
+        const credentialsJson = process.env.FIREBASE_ADMIN_CREDENTIALS;
+        if (!credentialsJson) {
+            console.warn("`FIREBASE_ADMIN_CREDENTIALS` environment variable is not set. The proxy service will not function in a deployed environment. For local development, this may be expected.");
+        } else {
+            const serviceAccount = JSON.parse(credentialsJson);
+            app = admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+                projectId: serviceAccount.project_id,
+            });
+        }
+    } catch (e: any) {
+        console.error("Failed to initialize Firebase Admin SDK. Please ensure the `FIREBASE_ADMIN_CREDENTIALS` environment variable is set correctly in your hosting provider.", e.message);
     }
-  } catch (e: any) {
-    console.error("Failed to initialize Firebase Admin SDK. Please ensure the configuration in src/lib/firebase.ts is correct.", e.message);
-  }
+} else {
+    app = admin.app();
 }
 
 
@@ -35,16 +44,16 @@ if (!admin.apps.length) {
  * Gets the Firestore database instance for the configured project.
  */
 export function getActiveStorageDb() {
-  if (!admin.apps.length) {
-    throw new Error('Firebase Admin SDK is not initialized. Check your configuration in src/lib/firebase.ts');
+  if (!app) {
+    throw new Error('Firebase Admin SDK is not initialized. Make sure `FIREBASE_ADMIN_CREDENTIALS` is set in your deployment environment.');
   }
-  return admin.firestore();
+  return admin.firestore(app);
 }
 
 /**
  * Returns the ID of the currently active storage project.
  */
 export function getActiveProjectId(): string | null {
-    if (!admin.apps.length || !projectId) return null;
-    return projectId;
+    if (!app) return null;
+    return app.options.projectId || null;
 }

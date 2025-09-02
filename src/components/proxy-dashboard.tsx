@@ -151,7 +151,8 @@ async function getMyData() {
         headers: { 'X-Admin-Secret': adminSecret },
       });
       if (!response.ok) {
-        throw new Error('Failed to delete key.');
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to delete key.');
       }
       toast({ title: 'API Key Deleted' });
       setApiKeys((prev) => prev.filter((key) => key.id !== keyId));
@@ -195,23 +196,14 @@ async function getMyData() {
               </Badge>
             )}
           </CardTitle>
-          <CardDescription>The proxy service is now automatically configured and connected to a Firebase project.</CardDescription>
+          <CardDescription>The proxy service status and the active Firebase project ID.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2 text-sm">
-            <Database className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Active Database Project ID:</span>
-            {isServiceActive ? (
-              <span className="font-mono font-bold text-accent">{activeProjectId}</span>
-            ) : (
-              <span className="font-mono font-bold text-destructive-foreground bg-destructive px-2 py-1 rounded-md">Not Configured</span>
-            )}
-          </div>
            <Alert className="mt-4">
               <Server className="h-4 w-4" />
-              <AlertTitle>Setup is Complete!</AlertTitle>
+              <AlertTitle>Manual Setup Required for Deployment</AlertTitle>
               <AlertDescription>
-                This gatekeeper application is now connected to a Firebase project. You no longer need to manually configure it.
+                For this service to function correctly on Netlify/Vercel, you must set the `FIREBASE_ADMIN_CREDENTIALS` environment variable. The service is currently {isServiceActive ? `connected to project: **${activeProjectId}**` : "inactive because credentials are not configured."}
               </AlertDescription>
           </Alert>
         </CardContent>
@@ -224,7 +216,7 @@ async function getMyData() {
             Admin Panel & API Key Generator
           </CardTitle>
            <CardDescription>
-            Enter your Admin Secret Key to generate and manage unique API keys for your client apps.
+            Enter your Admin Secret Key to generate and manage unique API keys for your client apps. This will only work if the service is active.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -280,12 +272,19 @@ async function getMyData() {
                           </TableCell>
                         </TableRow>
                       )}
-                      {adminSecret && !isKeyLoading && apiKeys.length === 0 && (
+                      {adminSecret && !isServiceActive && !isKeyLoading && (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-destructive">
+                            Service is inactive. Please configure `FIREBASE_ADMIN_CREDENTIALS` in your deployment environment.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {adminSecret && isServiceActive && !isKeyLoading && apiKeys.length === 0 && (
                         <TableRow>
                             <TableCell colSpan={3} className="text-center text-muted-foreground">No API keys found. Generate one above.</TableCell>
                         </TableRow>
                       )}
-                      {adminSecret && apiKeys.map(key => (
+                      {adminSecret && isServiceActive && apiKeys.map(key => (
                         <TableRow key={key.id}>
                           <TableCell className="font-medium">{key.name}</TableCell>
                           <TableCell>
@@ -339,31 +338,60 @@ async function getMyData() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-           <div>
-              <h3 className="font-semibold mb-2">Step 1: Generate an API Key</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-               Use the "Admin Panel" above to create a unique API key for your game, website, or other application.
-              </p>
-          </div>
-          <div>
-              <h3 className="font-semibold mb-2">Step 2: Use the Key in Your Client App</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-               In your client application's code, use the snippet below. It already contains the correct URL for this gatekeeper app. You just need to replace `proxy_...` with the key you generated.
-              </p>
-              <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-7 w-7" onClick={() => copyToClipboard(clientAppSetupCode)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Copy code</p></TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <pre className="overflow-x-auto whitespace-pre-wrap">{clientAppSetupCode}</pre>
-              </div>
-          </div>
+           <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger>Step 1: Get Your Firebase Service Account Credentials</AccordionTrigger>
+              <AccordionContent>
+                <ol className="list-decimal list-inside space-y-2 text-sm">
+                  <li>Go to your <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="underline text-primary">Firebase Project Console</a>.</li>
+                  <li>Click the gear icon next to "Project Overview" and select <strong>Project settings</strong>.</li>
+                  <li>Go to the <strong>Service accounts</strong> tab.</li>
+                  <li>Click the <strong>"Generate new private key"</strong> button. A JSON file will download.</li>
+                  <li>Open the file, and copy the entire content. You will need this for the next step.</li>
+                </ol>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger>Step 2: Set Environment Variables in Netlify</AccordionTrigger>
+              <AccordionContent>
+                 <ol className="list-decimal list-inside space-y-2 text-sm">
+                    <li>In your Netlify site dashboard, go to <strong>Site configuration &gt; Build & deploy &gt; Environment</strong>.</li>
+                    <li>Click **"Edit variables"** and add the following:</li>
+                    <li className="ml-4 my-2">
+                        <strong>Key:</strong> `FIREBASE_ADMIN_CREDENTIALS` <br/>
+                        <strong>Value:</strong> Paste the entire content of the JSON file you downloaded.
+                    </li>
+                     <li className="ml-4 my-2">
+                        <strong>Key:</strong> `ADMIN_SECRET_KEY` <br/>
+                        <strong>Value:</strong> Your chosen secret for the admin panel (e.g., `AKJ@@8051964008//@LEADERS`).
+                    </li>
+                    <li>Add the other variables (`NEXT_PUBLIC_DEFAULT_USER_NAME` and `NEXT_PUBLIC_DEFAULT_USER_PASSWORD`) as well.</li>
+                    <li>Save and **re-deploy** your application for the new variables to take effect.</li>
+                </ol>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger>Step 3: Generate an API Key and Use in Your App</AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                Once the service is active, use the "Admin Panel" above to create a unique API key. Then, use the snippet below in your client app.
+                </p>
+                <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-7 w-7" onClick={() => copyToClipboard(clientAppSetupCode)}>
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent><p>Copy code</p></TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <pre className="overflow-x-auto whitespace-pre-wrap">{clientAppSetupCode}</pre>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </CardContent>
       </Card>
       
