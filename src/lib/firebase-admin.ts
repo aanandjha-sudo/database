@@ -1,46 +1,32 @@
 
 import admin from 'firebase-admin';
+import { firebaseConfig } from '@/lib/firebase';
 
-// --- STEP 1: CONFIGURE YOUR DATABASE PROJECT ---
-// To connect your Firebase project, paste the contents of your
-// service account JSON file here.
-//
-// How to get your service account file:
-// 1. Go to your Firebase project settings.
-// 2. Go to the "Service accounts" tab.
-// 3. Click "Generate new private key".
-//
-// After pasting, your code should look like this:
-// const serviceAccount = { "type": "service_account", "project_id": "...", ... };
-// -----------------------------------------------------
+// --- Simplified Configuration ---
+// The application is now configured to use the Firebase project defined
+// in src/lib/firebase.ts. This project will be used for storing API keys
+// and as the default database for your client apps.
 
-const serviceAccount = {
-  // PASTE YOUR FIREBASE SERVICE ACCOUNT JSON HERE
-  // If this is empty, the service will not work.
-  // Example: "type": "service_account", "project_id": "my-cool-project", ...
-};
-
+// No manual setup is required here anymore.
 
 // -----------------------------------------------------
 // No need to edit anything below this line.
 // -----------------------------------------------------
 
-const MANAGEMENT_PROJECT_ID = (serviceAccount as any).project_id || 'management_db';
-const KEYS_COLLECTION = '_proxy_api_keys';
+const projectId = firebaseConfig.projectId;
 
 // Initialize the primary app for database operations.
 if (!admin.apps.length) {
   try {
-    if (serviceAccount && (serviceAccount as any).project_id) {
+    if (projectId) {
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-            databaseURL: `https://${(serviceAccount as any).project_id}.firebaseio.com`
+            projectId: projectId,
         });
     } else {
-        console.warn("Service account credentials are not set in src/lib/firebase-admin.ts. The proxy service will not function.");
+        console.warn("Firebase project ID is not set in src/lib/firebase.ts. The proxy service will not function.");
     }
   } catch (e: any) {
-    console.error("Failed to initialize Firebase Admin SDK. Please ensure the service account JSON in src/lib/firebase-admin.ts is correct.", e.message);
+    console.error("Failed to initialize Firebase Admin SDK. Please ensure the configuration in src/lib/firebase.ts is correct.", e.message);
   }
 }
 
@@ -50,7 +36,7 @@ if (!admin.apps.length) {
  */
 export function getActiveStorageDb() {
   if (!admin.apps.length) {
-    throw new Error('Firebase Admin SDK is not initialized. Check your configuration in src/lib/firebase-admin.ts');
+    throw new Error('Firebase Admin SDK is not initialized. Check your configuration in src/lib/firebase.ts');
   }
   return admin.firestore();
 }
@@ -59,6 +45,6 @@ export function getActiveStorageDb() {
  * Returns the ID of the currently active storage project.
  */
 export function getActiveProjectId(): string | null {
-    if (!admin.apps.length || !serviceAccount || !(serviceAccount as any).project_id) return null;
-    return (serviceAccount as any).project_id;
+    if (!admin.apps.length || !projectId) return null;
+    return projectId;
 }

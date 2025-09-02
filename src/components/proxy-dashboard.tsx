@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, CheckCircle, Info, Loader2, KeyRound, Copy, Database, Code, Trash2, PlusCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle, Info, Loader2, KeyRound, Copy, Database, Code, Trash2, PlusCircle, Server } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -41,33 +41,12 @@ interface ApiKey {
   createdAt: string;
 }
 
-const serverSetupCode = `
-// FILE: src/lib/firebase-admin.ts
-
-import admin from 'firebase-admin';
-
-const serviceAccount = {
-  // PASTE YOUR FIREBASE SERVICE ACCOUNT JSON HERE
-  "type": "service_account",
-  "project_id": "your-project-id",
-  "private_key_id": "...",
-  "private_key": "...",
-  "client_email": "...",
-  "client_id": "...",
-  "auth_uri": "...",
-  "token_uri": "...",
-  "auth_provider_x509_cert_url": "...",
-  "client_x509_cert_url": "..."
-};
-
-// No need to edit anything below this line...
-`.trim();
-
 const clientAppSetupCode = `
 // In your client app (game, website, etc.)
 
 // The URL of your deployed proxy service.
-const PROXY_URL = 'https://your-proxy-app-url.com/api/proxy';
+// This will be the URL where you host this gatekeeper app.
+const PROXY_URL = 'YOUR_DEPLOYED_APP_URL/api/proxy';
 
 // The unique API key you generated from this dashboard.
 const API_KEY = 'proxy_...'; // <-- PASTE YOUR GENERATED KEY HERE
@@ -168,8 +147,7 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
       if (!response.ok) throw new Error('Failed to delete key.');
       toast({ title: 'API Key Deleted' });
       setApiKeys(prev => prev.filter(key => key.id !== keyId));
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e: any)      toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally {
       setIsLoading(false);
     }
@@ -200,7 +178,7 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
             Service Status
             {isServiceActive ? (
               <Badge variant="default" className="bg-green-600 text-white">
-                <CheckCircle className="mr-2 h-4 w-4" /> Active
+                <CheckCircle className="mr-2 h-4 w-4" /> Active & Configured
               </Badge>
             ) : (
               <Badge variant="destructive">
@@ -208,7 +186,7 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
               </Badge>
             )}
           </CardTitle>
-          <CardDescription>Current status and configuration of the proxy service.</CardDescription>
+          <CardDescription>The proxy service is now automatically configured and connected to a Firebase project.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 text-sm">
@@ -220,6 +198,13 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
               <span className="font-mono font-bold text-destructive-foreground bg-destructive px-2 py-1 rounded-md">Not Configured</span>
             )}
           </div>
+           <Alert className="mt-4">
+              <Server className="h-4 w-4" />
+              <AlertTitle>Setup is Complete!</AlertTitle>
+              <AlertDescription>
+                This gatekeeper application is now connected to a Firebase project. You no longer need to manually configure it.
+              </AlertDescription>
+          </Alert>
         </CardContent>
       </Card>
 
@@ -230,7 +215,7 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
             Admin Panel & API Key Generator
           </CardTitle>
            <CardDescription>
-            Enter your Admin Secret Key to generate and manage API keys for your client apps.
+            Enter your Admin Secret Key to generate and manage unique API keys for your client apps.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -340,34 +325,21 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
       <Card>
         <CardHeader>
           <CardTitle className="font-headline flex items-center gap-3">
-            <Database className="h-5 w-5 text-primary" />
-            How to Use: A Simple Guide
+            <Code className="h-5 w-5 text-primary" />
+            How to Use: Connect Your Client App
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
            <div>
-              <h3 className="font-semibold mb-2">Step 1: Connect This App to Your Firebase Database</h3>
+              <h3 className="font-semibold mb-2">Step 1: Generate an API Key</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Get your Firebase Service Account file from your Firebase project settings. Then, open the file `src/lib/firebase-admin.ts` in this project and paste the entire content of the file into the `serviceAccount` variable.
+               Use the "Admin Panel" above to create a unique API key for your game, website, or other application.
               </p>
-              <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-7 w-7" onClick={() => copyToClipboard(serverSetupCode)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Copy code</p></TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <pre className="overflow-x-auto whitespace-pre-wrap">{serverSetupCode}</pre>
-              </div>
           </div>
           <div>
-              <h3 className="font-semibold mb-2">Step 2: Connect Your Client App to the Database</h3>
+              <h3 className="font-semibold mb-2">Step 2: Use the Key in Your Client App</h3>
               <p className="text-sm text-muted-foreground mb-4">
-               In your client application (your game, website, etc.), use the code below to make requests. Generate an API key from the Admin Panel above and paste it into the `API_KEY` variable.
+               In your client application's code, use the snippet below. Replace `YOUR_DEPLOYED_APP_URL` with the public URL of this gatekeeper app, and replace `proxy_...` with the key you generated.
               </p>
               <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
                 <TooltipProvider>

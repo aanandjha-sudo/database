@@ -10,7 +10,6 @@ async function validateApiKey(apiKey: string): Promise<boolean> {
     return false;
   }
   try {
-    // We use the first project for management.
     const db = getActiveStorageDb(); 
     const keysQuery = await db.collection(KEYS_COLLECTION).where('key', '==', apiKey).limit(1).get();
 
@@ -50,8 +49,6 @@ export async function POST(req: NextRequest) {
 
   // 3. Perform the database operation
   try {
-    // Note: getActiveStorageDb() will now point to whichever DB is active,
-    // which is switched via the admin panel. The key validation db is always the first one.
     const db = getActiveStorageDb();
     const pathString = path.join('/');
     
