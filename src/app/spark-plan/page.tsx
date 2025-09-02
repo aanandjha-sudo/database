@@ -17,8 +17,8 @@ fetch('/api/proxy', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    // An ID token from Firebase Auth must be included
-    'Authorization': 'Bearer <YOUR_FIREBASE_ID_TOKEN>'
+    // The secret API Key defined in the proxy's .env file
+    'X-API-Key': 'your-secret-api-key-for-client-apps'
   },
   body: JSON.stringify({
     operation: 'getDoc',
@@ -65,14 +65,14 @@ fetch('/api/proxy', {
             </CardHeader>
             <CardContent>
                 <p className="mb-4">
-                    To access the database via the proxy, your application must authenticate users with Firebase Authentication and send the user's ID token in the Authorization header of each request.
+                    To access the database via the proxy, your application must provide the correct API Key in the `X-API-Key` header. This key proves that the request is coming from an authorized application.
                 </p>
                 <div className="relative rounded-md bg-muted/50 p-4 font-code text-sm">
                     <Code className="absolute right-2 top-2 h-5 w-5" />
                     <pre className="overflow-x-auto whitespace-pre-wrap">{codeChanges.trim()}</pre>
                 </div>
                  <p className="mt-4 text-sm text-muted-foreground">
-                    This ensures that only authenticated users can perform database operations, and the backend can enforce security rules. Without a valid ID token, the API will reject the request.
+                    This ensures that only applications with the key can perform database operations. Without a valid key, the API will reject the request.
                 </p>
             </CardContent>
           </Card>

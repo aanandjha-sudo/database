@@ -1,23 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPrimaryAuth, getActiveStorageDb } from '@/lib/firebase-admin';
+import { getActiveStorageDb } from '@/lib/firebase-admin';
+
+// This is the secret key that client applications must provide to use the proxy.
+const API_ACCESS_KEY = process.env.API_ACCESS_KEY;
 
 export async function POST(req: NextRequest) {
-  // 1. Authenticate the request
-  const authorization = req.headers.get('Authorization');
-  if (!authorization?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Missing or invalid authorization header' }, { status: 401 });
-  }
-  const idToken = authorization.split('Bearer ')[1];
+  // 1. Authenticate the request using a secret API key
+  const providedApiKey = req.headers.get('X-API-Key');
 
-  let decodedToken;
-  try {
-    decodedToken = await getPrimaryAuth().verifyIdToken(idToken);
-  } catch (error) {
-    console.error('Error verifying ID token:', error);
-    return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+  if (!API_ACCESS_KEY) {
+    console.error('API_ACCESS_KEY is not set on the server.');
+    return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
   }
 
-  const uid = decodedToken.uid;
+  if (providedApiKey !== API_ACCESS_KEY) {
+    return NextResponse.json({ error: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
+  }
 
   // 2. Parse the request body
   let body;
@@ -37,12 +35,11 @@ export async function POST(req: NextRequest) {
   try {
     const db = getActiveStorageDb();
     const pathString = path.join('/');
-
-    // IMPORTANT: Add custom security logic here if needed.
-    // For example, ensure a user can only edit their own profile.
-    if (path[0] === 'users' && path[1] !== uid) {
-       // return NextResponse.json({ error: 'Permission denied: You can only access your own data.' }, { status: 403 });
-    }
+    
+    // NOTE: In the previous version, we checked user ID (UID).
+    // Since we are now using a single API key for all apps,
+    // this kind of user-specific rule is no longer applicable here.
+    // Any app with the key has full access as defined by the proxy's capabilities.
 
     let result: any;
 
@@ -52,7 +49,6 @@ export async function POST(req: NextRequest) {
         result = doc.exists ? { id: doc.id, ...doc.data() } : null;
         break;
       case 'addDoc':
-        // Note: `addDoc` requires a collection path, not a document path.
         const collectionRef = db.collection(pathString);
         const newDocRef = await collectionRef.add(payload);
         result = { id: newDocRef.id };

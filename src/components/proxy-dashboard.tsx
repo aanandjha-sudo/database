@@ -25,11 +25,11 @@ interface ProxyDashboardProps {
 const envSetupCode = `
 # .env.local
 
-# Main project for user authentication
-MAIN_APP_PROJECT_ID="your-main-auth-project-id"
-
-# Admin secret to switch projects
+# Password for the Admin Panel on this dashboard to switch projects.
 ADMIN_SECRET_KEY="your-super-secret-key"
+
+# Secret API key that your client apps will use to access the database.
+API_ACCESS_KEY="your-secret-api-key-for-client-apps"
 
 # --- Storage Projects ---
 
@@ -43,30 +43,32 @@ STORAGE_PROJECT_1_CREDS_BASE64="ey..."
 `.trim();
 
 const clientAppSetupCode = `
-// 1. Install Firebase SDK
-// npm install firebase
+// No special SDKs are needed on the client, just standard 'fetch'.
+// Below is an example of how to make a request.
 
-// 2. Initialize Firebase in your app
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+// The URL of your deployed proxy service.
+const PROXY_URL = 'https://your-proxy-service-url.com/api/proxy';
 
-const firebaseConfig = {
-  apiKey: "AIza...",
-  authDomain: "your-main-auth-project-id.firebaseapp.com",
-  projectId: "your-main-auth-project-id",
-  storageBucket: "your-main-auth-project-id.appspot.com",
-  messagingSenderId: "...",
-  appId: "1:..."
-};
+// The secret API key you defined in the proxy's .env file.
+const API_KEY = 'your-secret-api-key-for-client-apps';
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-// 3. Get the user's ID token after they log in
-// const idToken = await auth.currentUser.getIdToken();
-
-// You will use this token in the 'Authorization' header
-// when calling the proxy API.
+async function getUserProfile(userId) {
+  const response = await fetch(PROXY_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': API_KEY // <-- This key authenticates your app
+    },
+    body: JSON.stringify({
+      operation: 'getDoc',
+      path: ['users', userId]
+    })
+  });
+  
+  const data = await response.json();
+  console.log(data);
+  return data;
+}
 `.trim();
 
 const apiExamples = {
@@ -74,7 +76,7 @@ const apiExamples = {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer <YOUR_FIREBASE_ID_TOKEN>'
+    'X-API-Key': 'your-secret-api-key-for-client-apps'
   },
   body: JSON.stringify({
     operation: 'getDoc',
@@ -85,7 +87,7 @@ const apiExamples = {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer <YOUR_FIREBASE_ID_TOKEN>'
+    'X-API-Key': 'your-secret-api-key-for-client-apps'
   },
   body: JSON.stringify({
     operation: 'addDoc',
@@ -100,7 +102,7 @@ const apiExamples = {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer <YOUR_FIREBASE_ID_TOKEN>'
+    'X-API-Key': 'your-secret-api-key-for-client-apps'
   },
   body: JSON.stringify({
     operation: 'setDoc',
@@ -115,7 +117,7 @@ const apiExamples = {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer <YOUR_FIREBASE_ID_TOKEN>'
+    'X-API-Key': 'your-secret-api-key-for-client-apps'
   },
   body: JSON.stringify({
     operation: 'updateDoc',
@@ -129,7 +131,7 @@ const apiExamples = {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer <YOUR_FIREBASE_ID_TOKEN>'
+    'X-API-Key': 'your-secret-api-key-for-client-apps'
   },
   body: JSON.stringify({
     operation: 'deleteDoc',
@@ -144,7 +146,7 @@ fetch('/api/proxy', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer <YOUR_FIREBASE_ID_TOKEN>'
+    'X-API-Key': 'your-secret-api-key-for-client-apps'
   },
   body: JSON.stringify({
     operation: 'addDoc',
@@ -161,7 +163,7 @@ fetch('/api/proxy', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer <YOUR_FIREBASE_ID_TOKEN>'
+    'X-API-Key': 'your-secret-api-key-for-client-apps'
   },
   body: JSON.stringify({
     operation: 'updateDoc',
@@ -176,7 +178,7 @@ fetch('/api/proxy', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer <YOUR_FIREBASE_ID_TOKEN>'
+    'X-API-Key': 'your-secret-api-key-for-client-apps'
   },
   body: JSON.stringify({
     operation: 'addDoc',
@@ -294,7 +296,7 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
               <AccordionContent className="px-6 pb-6 pt-0">
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    This panel allows you to switch between different Firebase projects that are configured to store data.
+                    Use this panel to switch which database your client apps are writing to. For example, you can switch from a 'testing' database to a 'production' database. Enter the `ADMIN_SECRET_KEY` from your `.env` file to authorize the switch.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Input
@@ -315,18 +317,18 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
                 </div>
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="project-config">
+            <AccordionItem value="project-config" defaultValue="project-config">
               <AccordionTrigger className="px-6 py-4 text-lg font-headline">
                 <div className="flex items-center gap-3">
                   <Database className="h-5 w-5 text-primary" />
-                  Firebase Project Configuration
+                  How to Use: Step-by-Step Guide
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-6 pb-6 pt-0 space-y-6">
                 <div>
-                    <h3 className="font-semibold mb-2">1. Configure Server Environment</h3>
+                    <h3 className="font-semibold mb-2">Step 1: Configure Your Proxy Server</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      To add or change the Firebase projects used for storage, you must update the `.env.local` file for this proxy server. Get the Service Account credentials (as a Base64 encoded JSON) from your Firebase project settings.
+                      Add your Firebase project credentials and secret keys to the `.env.local` file of this proxy service. You can get the Service Account JSON from your Firebase project settings, then Base64-encode it.
                     </p>
                     <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
                       <TooltipProvider>
@@ -343,9 +345,9 @@ export function ProxyDashboard({ initialActiveProjectId, error }: ProxyDashboard
                     </div>
                 </div>
                 <div>
-                    <h3 className="font-semibold mb-2">2. Configure Client Application</h3>
+                    <h3 className="font-semibold mb-2">Step 2: Configure Your Client Application</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Your client application (e.g., your Next.js frontend, mobile app) needs to be set up with Firebase Authentication to get a user ID token. This token proves the user is logged in. Get your config from the Firebase console.
+                     In your client application (e.g., your Next.js frontend, mobile app), you will make `fetch` requests to this proxy service. You must include your `API_ACCESS_KEY` in the `X-API-Key` header to authenticate.
                     </p>
                     <div className="relative mt-4 rounded-md bg-muted/50 p-4 font-code text-sm">
                       <TooltipProvider>
