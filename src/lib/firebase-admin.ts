@@ -17,7 +17,7 @@ import admin from 'firebase-admin';
 //    via the dashboard UI, NOT as environment variables.
 
 const MANAGEMENT_PROJECT_COLLECTION = '_proxy_projects';
-let managementApp: admin.app.App;
+let managementApp: admin.app.App | null = null;
 const storageApps = new Map<string, admin.app.App>();
 
 function initializeManagementApp() {
@@ -31,7 +31,11 @@ function initializeManagementApp() {
   try {
     const credentialsJson = process.env.FIREBASE_MANAGEMENT_CREDENTIALS;
     if (!credentialsJson) {
-      throw new Error('`FIREBASE_MANAGEMENT_CREDENTIALS` environment variable is not set.');
+      // Don't throw an error here. Instead, log it and let the app run.
+      // The UI will handle showing a friendly error to the user.
+      console.warn('`FIREBASE_MANAGEMENT_CREDENTIALS` environment variable is not set. Management features will be disabled.');
+      managementApp = null;
+      return;
     }
     const serviceAccount = JSON.parse(credentialsJson);
     managementApp = admin.initializeApp({
@@ -40,7 +44,8 @@ function initializeManagementApp() {
     }, 'management');
   } catch (e: any) {
     console.error("Failed to initialize Firebase Management App:", e.message);
-    throw new Error('Firebase Management App could not be initialized. Check your `FIREBASE_MANAGEMENT_CREDENTIALS`.');
+    // Also don't throw here.
+    managementApp = null;
   }
 }
 
@@ -51,7 +56,7 @@ initializeManagementApp();
  */
 export async function getManagementDb() {
   if (!managementApp) {
-    throw new Error('Management App is not initialized.');
+    throw new Error('Management App is not initialized. Please set FIREBASE_MANAGEMENT_CREDENTIALS.');
   }
   return admin.firestore(managementApp);
 }
@@ -62,7 +67,8 @@ export async function getManagementDb() {
  */
 export async function getStorageDb(projectId: string): Promise<admin.firestore.Firestore> {
   if (storageApps.has(projectId)) {
-    return admin.firestore(storageApps.get(projectId));
+    // Type assertion is safe because we check `has` above.
+    return admin.firestore(storageApps.get(projectId)!);
   }
 
   try {
