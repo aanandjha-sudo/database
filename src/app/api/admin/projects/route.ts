@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     try {
-        const db = getManagementDb();
+        const db = await getManagementDb();
         const snapshot = await db.collection(PROJECTS_COLLECTION).get();
         const projects = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
         return NextResponse.json(projects, { status: 200 });
@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
 
         let serviceAccount;
         try {
-            serviceAccount = JSON.parse(credentials);
+            // The credentials from the textarea might be a string, so we need to parse it.
+            serviceAccount = typeof credentials === 'string' ? JSON.parse(credentials) : credentials;
         } catch {
             return NextResponse.json({ error: 'Invalid JSON credentials format' }, { status: 400 });
         }
@@ -50,10 +51,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '`project_id` missing from credentials' }, { status: 400 });
         }
 
-        const db = getManagementDb();
+        const db = await getManagementDb();
         const projectDoc = {
             name,
-            credentials,
+            // Store the credentials as a string, which is what firebase-admin expects.
+            credentials: JSON.stringify(serviceAccount),
             createdAt: new Date().toISOString()
         };
 
@@ -61,6 +63,7 @@ export async function POST(req: NextRequest) {
         
         return NextResponse.json({ id: projectId, name }, { status: 201 });
     } catch (error: any) {
+        console.error("Failed to add project:", error);
         return NextResponse.json({ error: 'Failed to add project', details: error.message }, { status: 500 });
     }
 }
@@ -78,7 +81,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     try {
-        const db = getManagementDb();
+        const db = await getManagementDb();
         await db.collection(PROJECTS_COLLECTION).doc(id).delete();
         // Note: This doesn't delete associated API keys, they will just stop working.
         // A more robust solution might cascade deletes.
